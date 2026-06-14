@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trợ Lý Tiếng Anh Của Bé Thanh Vân</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #ff6b6b;
+            --secondary-color: #4ecdc4;
+            --bg-color: #f0f3f8;
+            --text-color: #2c3e50;
+            --success-color: #1dd1a1;
+            --warning-color: #ffeaa7;
+        }
+
+        * { box-sizing: border-box; font-family: 'Quicksand', sans-serif; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-color); color: var(--text-color);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; overflow: hidden;
+        }
+
+        h1 { font-family: 'Fredoka One', cursive; color: var(--primary-color); font-size: 24px; margin-bottom: 5px; }
+
+        #game-container {
+            width: 95%; max-width: 750px; height: 85vh; max-height: 580px;
+            background: white; border-radius: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+            padding: 20px; text-align: center;
+            position: relative; display: flex; flex-direction: column; justify-content: space-between;
+        }
+
+        .progress-container {
+            width: 100%; background-color: #e0e0e0; border-radius: 10px; height: 12px; overflow: hidden; margin-bottom: 10px;
+        }
+        #progress-bar {
+            width: 0%; height: 100%;
+            background: linear-gradient(to right, var(--secondary-color), var(--success-color));
+            transition: width 0.3s ease;
+        }
+
+        h2 { font-family: 'Fredoka One', cursive; color: #4a4a4a; font-size: 20px; margin-bottom: 5px; }
+        p.instruction { font-size: 14px; color: #7f8c8d; margin-bottom: 10px; }
+
+        .btn {
+            background-color: var(--secondary-color); color: white; border: none;
+            padding: 10px 25px; font-size: 16px; font-weight: bold;
+            border-radius: 50px; cursor: pointer; box-shadow: 0 4px 0 #3dbbb2;
+            transition: all 0.1s ease; margin: 5px; display: inline-block;
+        }
+        .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #3dbbb2; }
+        .btn-success { background-color: var(--success-color); box-shadow: 0 4px 0 #10ac84; }
+        .btn-success:active { box-shadow: 0 1px 0 #10ac84; }
+
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
+        .screen.active { display: flex; animation: fadeIn 0.3s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-image {
+            width: 160px; height: 160px; object-fit: contain;
+            border: 5px solid #f0f0f0; border-radius: 15px;
+            margin: 10px 0; background: #fafafa;
+        }
+
+        .word-display { font-size: 32px; font-weight: bold; color: var(--primary-color); margin: 5px 0; }
+
+        .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 460px; margin-top: 10px; }
+        
+        .option-btn {
+            background: white; border: 2.5px solid #e0e0e0; padding: 12px;
+            font-size: 18px; font-weight: bold; border-radius: 15px;
+            cursor: pointer; transition: all 0.1s; box-shadow: 0 3px 0 #e0e0e0;
+        }
+        .option-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #e0e0e0; }
+        .option-btn.correct { background-color: #d4edda; border-color: var(--success-color); color: #155724; box-shadow: none; }
+        .option-btn.wrong { background-color: #f8d7da; border-color: var(--primary-color); color: #721c24; box-shadow: none; }
+
+        .mic-container { margin: 10px 0; }
+        .mic-btn {
+            width: 75px; height: 75px; border-radius: 50%;
+            background-color: var(--primary-color); border: none; cursor: pointer;
+            box-shadow: 0 5px 0 #dd4b4b; display: flex; align-items: center; justify-content: center; margin: 0 auto;
+        }
+        .mic-btn svg { width: 32px; height: 32px; fill: white; }
+        .mic-btn.listening { animation: pulse 1.2s infinite; background-color: #ff4757; }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 107, 107, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
+        }
+
+        .chat-container { width: 100%; max-width: 550px; margin: 10px 0; display: flex; flex-direction: column; }
+        .chat-bubble { padding: 10px 15px; border-radius: 15px; margin: 5px 0; max-width: 80%; font-size: 16px; text-align: left; }
+        .bubble-machine { background-color: #e3f2fd; color: #1565c0; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .bubble-user { background-color: #e8f5e9; color: #2e7d32; align-self: flex-end; border-bottom-right-radius: 2px; border: 2px dashed var(--success-color); }
+
+        .control-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; border-top: 2px solid #f0f0f0; padding-top: 10px; margin-top: 10px; }
+        .hint-text { font-size: 14px; color: #7f8c8d; font-style: italic; max-width: 70%; text-align: left; }
+        .skip-btn { background-color: var(--warning-color); color: #d63031; box-shadow: 0 3px 0 #fab1a0; padding: 8px 20px; font-size: 14px; }
+        .skip-btn.highlighted { animation: bounceSkip 1s infinite alternate; background-color: #ff7675; color: white; box-shadow: 0 3px 0 #c23616; }
+        @keyframes bounceSkip { 0% { transform: scale(1); } 100% { transform: scale(1.06); } }
+
+        /* Khung chọn bài học từ Unit 1 đến Unit 9 */
+        .unit-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 550px; margin-top: 15px; }
+        .unit-card { background: #f8f9fa; border: 2px solid #e2e8f0; padding: 15px 10px; font-weight: bold; border-radius: 15px; cursor: pointer; transition: all 0.2s; }
+        .unit-card:hover { border-color: var(--secondary-color); background: #eefcfb; transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+    <h1>Góc Học Tập Của Thanh Vân ✨</h1>
+
+    <div id="game-container">
+        <div class="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+
+        <div id="screen-welcome" class="screen active">
+            <h2>Con muốn học bài nào hôm nay? 😊</h2>
+            <p class="instruction">Bé hãy chọn một Unit ở dưới để bắt đầu trò chơi tương tác nhé!</p>
+            <div id="unit-grid" class="unit-selector">
+                </div>
+        </div>
+
+        <div id="screen-quiz" class="screen">
+            <h2 id="quiz-heading">Vòng 1: Thử Tài Tinh Mắt 👀</h2>
+            <p class="instruction">Bé nhìn hình và bấm chọn từ tiếng Anh đúng nhất!</p>
+            <img id="quiz-img" class="card-image" src="" alt="Quiz Link">
+            <div>
+                <button class="btn" style="padding: 5px 15px; font-size: 13px; box-shadow: 0 2px 0 #3dbbb2;" onclick="speakCurrentTarget()">🔈 Nghe Máy Đọc mẫu</button>
+            </div>
+            <div id="quiz-options-container" class="quiz-options"></div>
+        </div>
+
+        <div id="screen-speak" class="screen">
+            <h2 id="speak-title">Vòng 2: Bé Tập Phát Âm 🗣️</h2>
+            <p id="speak-instruction" class="instruction">Bấm nút Micro đỏ một lần, rồi đọc thật to lên nhé!</p>
+            
+            <div id="speak-vocab-area" style="width:100%;">
+                <img id="speak-img" class="card-image" src="" alt="Speak Link">
+                <div id="speak-word" class="word-display">happy</div>
+            </div>
+
+            <div id="speak-dialog-area" class="chat-container" style="display:none;">
+                <img id="dialog-context-img" class="card-image" src="" alt="Context" style="width:100px; height:100px; margin:0 auto 5px auto;">
+                <div id="bubble-machine" class="chat-bubble bubble-machine">...</div>
+                <div id="bubble-user" class="chat-bubble bubble-user">...</div>
+            </div>
+
+            <div style="margin-bottom: 5px;">
+                <button class="btn" style="padding: 5px 15px; font-size: 13px; box-shadow: 0 2px 0 #3dbbb2;" onclick="speakCurrentTarget()">🔈 Nghe Lại Mẫu</button>
+            </div>
+            
+            <div class="mic-container">
+                <button id="mic-button" class="mic-btn" onclick="toggleListening()">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" />
+                    </svg>
+                </button>
+            </div>
+            <div id="speech-live-text" style="font-weight: bold; font-size: 14px; color: #7f8c8d; min-height: 20px; font-style: italic;"></div>
+        </div>
+
+        <div id="screen-result" class="screen">
+            <h2>Tuyệt Vời Ông Mặt Trời! 🎉</h2>
+            <p id="result-message" style="font-size: 18px;">Con đã xuất sắc hoàn thành bài học!</p>
+            <div style="font-size: 60px; margin: 15px 0;">⭐🏆⭐</div>
+            <button class="btn btn-success" onclick="resetGame()">Học Bài Khác 🔄</button>
+        </div>
+
+        <div id="control-area" class="control-bar" style="display: none;">
+            <div id="game-hint" class="hint-text">Ý nghĩa: ...</div>
+            <button id="global-skip-btn" class="btn skip-btn" onclick="skipTask()">Bỏ qua ➡️</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
