@@ -54,7 +54,7 @@
         }
         .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #3dbbb2; }
         .btn-success { background-color: var(--success-color); box-shadow: 0 4px 0 #10ac84; }
-        .btn-success:active { box-shadow: 0 1px 0 #10ac84; }
+        .btn-success:active { box-shadow: 0 4px 0 #10ac84; }
 
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
         .screen.active { display: flex; animation: fadeIn 0.3s ease; }
@@ -109,7 +109,6 @@
         .skip-btn.highlighted { animation: bounceSkip 1s infinite alternate; background-color: #ff7675; color: white; box-shadow: 0 3px 0 #c23616; }
         @keyframes bounceSkip { 0% { transform: scale(1); } 100% { transform: scale(1.06); } }
 
-        /* Khung chọn bài học từ Unit 1 đến Unit 9 */
         .unit-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 550px; margin-top: 15px; }
         .unit-card { background: #f8f9fa; border: 2px solid #e2e8f0; padding: 15px 10px; font-weight: bold; border-radius: 15px; cursor: pointer; transition: all 0.2s; }
         .unit-card:hover { border-color: var(--secondary-color); background: #eefcfb; transform: translateY(-2px); }
@@ -127,14 +126,13 @@
         <div id="screen-welcome" class="screen active">
             <h2>Con muốn học bài nào hôm nay? 😊</h2>
             <p class="instruction">Bé hãy chọn một Unit ở dưới để bắt đầu trò chơi tương tác nhé!</p>
-            <div id="unit-grid" class="unit-selector">
-                </div>
+            <div id="unit-grid" class="unit-selector"></div>
         </div>
 
         <div id="screen-quiz" class="screen">
             <h2 id="quiz-heading">Vòng 1: Thử Tài Tinh Mắt 👀</h2>
             <p class="instruction">Bé nhìn hình và bấm chọn từ tiếng Anh đúng nhất!</p>
-            <img id="quiz-img" class="card-image" src="" alt="Quiz Link">
+            <img id="quiz-img" class="card-image" src="" alt="" medals="" onerror="this.style.display='none';">
             <div>
                 <button class="btn" style="padding: 5px 15px; font-size: 13px; box-shadow: 0 2px 0 #3dbbb2;" onclick="speakCurrentTarget()">🔈 Nghe Máy Đọc mẫu</button>
             </div>
@@ -146,12 +144,12 @@
             <p id="speak-instruction" class="instruction">Bấm nút Micro đỏ một lần, rồi đọc thật to lên nhé!</p>
             
             <div id="speak-vocab-area" style="width:100%;">
-                <img id="speak-img" class="card-image" src="" alt="Speak Link">
+                <img id="speak-img" class="card-image" src="" alt="" onerror="this.style.display='none';">
                 <div id="speak-word" class="word-display">happy</div>
             </div>
 
             <div id="speak-dialog-area" class="chat-container" style="display:none;">
-                <img id="dialog-context-img" class="card-image" src="" alt="Context" style="width:100px; height:100px; margin:0 auto 5px auto;">
+                <img id="dialog-context-img" class="card-image" src="" alt="" style="width:100px; height:100px; margin:0 auto 5px auto;" onerror="this.style.display='none';">
                 <div id="bubble-machine" class="chat-bubble bubble-machine">...</div>
                 <div id="bubble-user" class="chat-bubble bubble-user">...</div>
             </div>
