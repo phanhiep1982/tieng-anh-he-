@@ -1,7 +1,7 @@
 let ALL_DATA = null;
 let currentUnitId = "";
 let currentVocabList = [];
-let currentGamePhase = 1; 
+let currentGamePhase = 1; // 1: Trắc nghiệm Vocab, 2: Nói Vocab, 3: Nói Ngữ Pháp, 4: Hội Thoại
 let currentIndex = 0;
 let totalTasks = 0;
 let completedTasks = 0;
@@ -15,19 +15,27 @@ const MAX_ATTEMPTS = 3;
 
 window.addEventListener('DOMContentLoaded', () => {
     const jsonPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/data.json';
+    
     fetch(jsonPath)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error("Không thể tải file dữ liệu");
+            return response.json();
+        })
         .then(data => {
             ALL_DATA = data;
             renderUnitSelector();
         })
-        .catch(err => console.error("Lỗi nạp tệp: ", err));
+        .catch(err => {
+            console.error("Lỗi nạp tệp data.json: ", err);
+            document.getElementById('unit-grid').innerHTML = "<p style='color:red;'>Đang tải dữ liệu, anh vui lòng đợi chút nhé...</p>";
+        });
 });
 
 function renderUnitSelector() {
     const grid = document.getElementById('unit-grid');
     if (!grid) return;
     grid.innerHTML = "";
+    
     for (let i = 1; i <= 9; i++) {
         let uKey = `unit${i}`;
         if (ALL_DATA && ALL_DATA[uKey]) {
@@ -44,8 +52,12 @@ function selectUnit(unitId) {
     currentUnitId = unitId;
     let unitData = ALL_DATA[currentUnitId];
     currentVocabList = [...unitData.vocabulary].sort(() => Math.random() - 0.5);
-    currentGamePhase = 1; currentIndex = 0; completedTasks = 0;
+    
+    currentGamePhase = 1;
+    currentIndex = 0;
+    completedTasks = 0;
     totalTasks = currentVocabList.length * 2 + unitData.grammar.length + unitData.dialogs.length;
+    
     initSpeechAPI();
     document.getElementById('control-area').style.display = 'flex';
     updateProgressBar();
@@ -67,14 +79,16 @@ function updateProgressBar() {
 function loadTask() {
     isFallbackActive = false;
     attemptCounter = 0;
-    if (document.getElementById('global-skip-btn')) document.getElementById('global-skip-btn').classList.remove('highlighted');
-    if (document.getElementById('speech-live-text')) document.getElementById('speech-live-text').innerText = "";
+    
+    const skipBtn = document.getElementById('global-skip-btn');
+    if (skipBtn) skipBtn.classList.remove('highlighted');
+    
+    const liveText = document.getElementById('speech-live-text');
+    if (liveText) liveText.innerText = "";
+    
     setMicListeningState(false);
     isListening = false;
     
-    if(document.getElementById('avatar-beth')) document.getElementById('avatar-beth').classList.remove('speaking');
-    if(document.getElementById('avatar-van')) document.getElementById('avatar-van').classList.remove('speaking');
-
     let unitData = ALL_DATA[currentUnitId];
 
     if (currentGamePhase === 1) {
@@ -117,20 +131,17 @@ function loadTask() {
     }
 }
 
-// ĐÃ SỬA: KHẮC PHỤC LỖI NHẤP NHÁY ẢNH VÒNG 1 - ÉP SỬ DỤNG PHƯƠNG ÁN CHỐNG VỠ HÌNH TRỰC TUYẾN TRÊN SERVER GITHUB PAGES
 function renderQuizLayout(item, type) {
     changeScreen('screen-quiz');
     const quizImg = document.getElementById('quiz-img');
     if (quizImg) {
-        // Sử dụng ảnh nền màu thông minh trực tuyến cực nhẹ để không bao giờ bị nháy hay vỡ hình
-        quizImg.src = `https://placehold.co/200x160/4ecdc4/white?text=${type === 'word' ? item.word : 'Grammar'}`;
+        quizImg.src = `assets/images/${item.id}.png`;
         quizImg.style.display = 'block';
     }
     document.getElementById('game-hint').innerText = "Nghĩa tiếng Việt: " + item.meaning;
 
     let targetText = type === 'word' ? item.word : item.sentence;
-    let options = [targetText, ...item.distractors];
-    options.sort(() => Math.random() - 0.5);
+    let options = [targetText, ...item.distractors].sort(() => Math.random() - 0.5);
 
     let container = document.getElementById('quiz-options-container');
     if (container) {
@@ -157,24 +168,17 @@ function renderSpeakLayout(item, type) {
     if (type === 'word') {
         document.getElementById('speak-title').innerText = "Vòng 2: Bé Tập Phát Âm 🗣️";
         if(speakWord) speakWord.innerText = item.word;
-        if(speakImg) { 
-            speakImg.src = `https://placehold.co/200x160/ff6b6b/white?text=${item.word}`;
-            speakImg.style.display = 'block'; 
-        }
+        if(speakImg) { speakImg.src = `assets/images/${item.id}.png`; speakImg.style.display = 'block'; }
         document.getElementById('game-hint').innerText = "Nghĩa: " + item.meaning;
     } else {
         document.getElementById('speak-title').innerText = "Vòng 2.5: Luyện Câu Ngữ Pháp 🧩";
         if(speakWord) speakWord.innerText = item.sentence;
-        if(speakImg) { 
-            speakImg.src = `https://placehold.co/200x160/1dd1a1/white?text=Grammar`;
-            speakImg.style.display = 'block'; 
-        }
+        if(speakImg) { speakImg.src = `assets/images/${item.id}.png`; speakImg.style.display = 'block'; }
         document.getElementById('game-hint').innerText = item.hint_vn;
     }
     speakCurrentTarget();
 }
 
-// ĐÃ SỬA: ĐỐI THOẠI HAI BÊN TỰ ĐỘNG PHÁT LIÊN TIẾP (BETH NÓI XONG -> MÁY TỰ PHÁT ÂM MẪU CỦA VÂN)
 function renderDialogLayout(item) {
     changeScreen('screen-speak');
     document.getElementById('speak-vocab-area').style.display = 'none';
@@ -185,28 +189,8 @@ function renderDialogLayout(item) {
     document.getElementById('bubble-user').innerText = "👉 Con hãy đọc: " + item.suggested_user;
     document.getElementById('game-hint').innerText = "Dịch nghĩa: " + item.hint_vn;
 
-    if(document.getElementById('avatar-beth')) document.getElementById('avatar-beth').classList.add('speaking');
-    
-    // Luồng tự động thông minh: Phát âm thanh câu hỏi của Beth trước
-    const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
-    let audioBeth = new Audio(`${baseUrl}/assets/audio/${item.id}_m.mp3`);
-    
-    audioBeth.play().then(() => {
-        audioBeth.onended = () => {
-            // Khi Beth nói xong, tắt hiệu ứng nhảy của Beth, chuyển sang bật nhảy hiệu ứng của Vân và phát âm mẫu của Vân
-            if(document.getElementById('avatar-beth')) document.getElementById('avatar-beth').classList.remove('speaking');
-            if(document.getElementById('avatar-van')) document.getElementById('avatar-van').classList.add('speaking');
-            
-            let audioVanSample = new Audio(`${baseUrl}/assets/audio/${item.id}_u.mp3`);
-            audioVanSample.play().then(() => {
-                audioVanSample.onended = () => {
-                    if(document.getElementById('avatar-van')) document.getElementById('avatar-van').classList.remove('speaking');
-                };
-            });
-        };
-    }).catch(() => {
-        speakCurrentTarget();
-    });
+    // ĐỒNG BỘ: Gọi trực tiếp thuộc tính file audio máy từ JSON
+    playLocalAudio(item.audio_machine);
 }
 
 function checkQuizAnswer(btn, selected, correct) {
@@ -222,18 +206,20 @@ function checkQuizAnswer(btn, selected, correct) {
 }
 
 function playLocalAudio(filePath) {
+    if (!filePath) return;
     const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
     const absolutePath = filePath.startsWith('http') ? filePath : `${baseUrl}/${filePath}`;
+    
     let audio = new Audio(absolutePath);
-    audio.play().catch(() => {});
+    audio.play().catch(e => console.log("Thiếu file audio local: ", filePath));
 }
 
 function getSimilarityScore(s1, s2) {
     const clean = (str) => str.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").trim();
     const strA = clean(s1); const strB = clean(s2);
     if (strA === strB) return 1.0;
-    const wordsA = strA.split(" "); const wordsB = strB.split(" ");
     
+    const wordsA = strA.split(" "); const wordsB = strB.split(" ");
     if (wordsA.length === 1 || wordsB.length === 1) {
         let track = Array(strB.length + 1).fill(null).map(() => Array(strA.length + 1).fill(null));
         for (let i = 0; i <= strA.length; i++) track[0][i] = i;
@@ -263,8 +249,7 @@ function initSpeechAPI() {
         clearTimeout(micTimeoutTimer);
         isListening = false; setMicListeningState(false);
         const result = event.results[0][0].transcript;
-        const liveText = document.getElementById('speech-live-text');
-        if (liveText) liveText.innerText = "Máy nghe được: \"" + result + "\"";
+        if (document.getElementById('speech-live-text')) document.getElementById('speech-live-text').innerText = "Máy nghe được: \"" + result + "\"";
         evaluateSpeech(result);
     };
 
@@ -279,16 +264,11 @@ function toggleListening() {
     if (isFallbackActive || !recognition) return;
     if (isListening) {
         isListening = false; recognition.stop(); clearTimeout(micTimeoutTimer); setMicListeningState(false);
-        if(document.getElementById('avatar-van')) document.getElementById('avatar-van').classList.remove('speaking');
     } else {
         isListening = true;
         try {
             recognition.start(); setMicListeningState(true);
-            if(document.getElementById('avatar-van')) document.getElementById('avatar-van').classList.add('speaking');
-            
-            const liveText = document.getElementById('speech-live-text');
-            if (liveText) liveText.innerText = "🎙️ Đang lắng nghe... Con nói đi nào!";
-            
+            if (document.getElementById('speech-live-text')) document.getElementById('speech-live-text').innerText = "🎙️ Đang lắng nghe... Con nói đi nào!";
             micTimeoutTimer = setTimeout(() => {
                 if (isListening) { isListening = false; recognition.stop(); activateFallbackQuiz(); }
             }, 8000);
@@ -318,13 +298,11 @@ function evaluateSpeech(spokenText) {
 }
 
 function processSpeechSuccess() {
-    if(document.getElementById('avatar-van')) document.getElementById('avatar-van').classList.remove('speaking');
     playLocalAudio("assets/audio/khen_dung.mp3");
     setTimeout(() => { completedTasks++; currentIndex++; updateProgressBar(); loadTask(); }, 1500);
 }
 
 function processSpeechFail() {
-    if(document.getElementById('avatar-van')) document.getElementById('avatar-van').classList.remove('speaking');
     attemptCounter++;
     if (attemptCounter >= MAX_ATTEMPTS) {
         const skipBtn = document.getElementById('global-skip-btn');
@@ -337,32 +315,39 @@ function processSpeechFail() {
     }
 }
 
+// 🛠️ ĐÃ VÁ: KHẮC PHỤC TRIỆT ĐỂ LỖI CRASH HỆ THỐNG TẠI PHASE 4 KHI GỌI SAI MÀN HÌNH QUIZ
 function activateFallbackQuiz() {
     if (isFallbackActive) return;
+    
+    let unitData = ALL_DATA[currentUnitId];
+    
+    // Nếu lỗi ở vòng hội thoại (Phase 4), tuyệt đối không mở QuizLayout gây crash dữ liệu oan
+    if (currentGamePhase === 4) {
+        playLocalAudio("assets/audio/khen_sai.mp3");
+        // Giữ mạch chơi cho bé bằng cách hiển thị trực tiếp nút Bỏ Qua nhấp nháy
+        const skipBtn = document.getElementById('global-skip-btn');
+        if (skipBtn) skipBtn.classList.add('highlighted');
+        return;
+    }
+    
+    // Đối với các vòng nói từ vựng/ngữ pháp (Phase 2 & 3), mở trắc nghiệm Quiz dự phòng như cũ
     isFallbackActive = true;
     playLocalAudio("assets/audio/khen_sai.mp3");
     
     setTimeout(() => {
-        let unitData = ALL_DATA[currentUnitId];
         if (currentGamePhase === 2) renderQuizLayout(currentVocabList[currentIndex], 'word');
         else if (currentGamePhase === 3) renderQuizLayout(unitData.grammar[currentIndex], 'sentence');
-        else if (currentGamePhase === 4) { completedTasks++; currentIndex++; updateProgressBar(); loadTask(); }
     }, 1000);
 }
 
 function speakCurrentTarget() {
     let unitData = ALL_DATA[currentUnitId];
-    const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
     let fileToPlay = "";
-    if (currentGamePhase === 1 || currentGamePhase === 2) fileToPlay = `${baseUrl}/assets/audio/${currentVocabList[currentIndex].id}.mp3`;
-    else if (currentGamePhase === 3) fileToPlay = `${baseUrl}/assets/audio/${unitData.grammar[currentIndex].id}.mp3`;
-    else if (currentGamePhase === 4) fileToPlay = `${baseUrl}/assets/audio/${unitData.dialogs[currentIndex].id}_m.mp3`;
+    if (currentGamePhase === 1 || currentGamePhase === 2) fileToPlay = currentVocabList[currentIndex].audio_file;
+    else if (currentGamePhase === 3) fileToPlay = unitData.grammar[currentIndex].audio_file;
+    else if (currentGamePhase === 4) fileToPlay = unitData.dialogs[currentIndex].audio_machine;
 
-    if(currentGamePhase === 4 && document.getElementById('avatar-beth')) {
-        document.getElementById('avatar-beth').classList.add('speaking');
-    }
-    let audio = new Audio(fileToPlay);
-    audio.play().catch(() => {});
+    playLocalAudio(fileToPlay);
 }
 
 function skipTask() {
@@ -373,4 +358,3 @@ function resetGame() {
     changeScreen('screen-welcome');
     document.getElementById('control-area').style.display = 'none';
 }
-
