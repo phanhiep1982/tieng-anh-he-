@@ -296,8 +296,19 @@ function renderGrammarClozeLayout(item) {
     
     let words = item.sentence.split(" ");
     let validIndices = [];
-    words.forEach((w, index) => { if(w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").length > 2) validIndices.push(index); });
-    let targetIndex = validIndices[Math.floor(Math.random() * validIndices.length)];
+    words.forEach((w, index) => { 
+        // Lọc từ sạch không chứa dấu câu để đo độ dài
+        let cleanW = w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
+        if(cleanW.length > 2) validIndices.push(index); 
+    });
+    
+    // NÚT KHÓA GUARD AN TOÀN THEO ĐỀ XUẤT CỦA ANH
+    let targetIndex;
+    if (validIndices.length === 0) {
+        targetIndex = words.length - 1; // Fallback: Ép đục lỗ từ cuối cùng trong câu
+    } else {
+        targetIndex = validIndices[Math.floor(Math.random() * validIndices.length)];
+    }
     
     let correctWord = words[targetIndex].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
     words[targetIndex] = "_______";
@@ -492,6 +503,7 @@ function activateFallbackQuiz() {
     if (isFallbackActive) return;
     let unitData = ALL_DATA[currentUnitId];
     
+    // Nếu lỗi ở vòng hội thoại (Phase 3), hiện nút bỏ qua, không mở Quiz
     if (currentGamePhase === 3) {
         playLocalAudio("assets/audio/khen_sai.mp3");
         const skipBtn = document.getElementById('global-skip-btn');
@@ -503,8 +515,14 @@ function activateFallbackQuiz() {
     playLocalAudio("assets/audio/khen_sai.mp3");
     
     setTimeout(() => {
-        if (currentGamePhase === 2) renderQuizLayout(currentVocabList[currentIndex], 'word');
-        else if (currentGamePhase === 26) renderQuizLayout(unitData.grammar[currentIndex], 'sentence');
+        if (currentGamePhase === 2) {
+            // Vòng nói từ vựng sai -> Về trắc nghiệm từ vựng (Phase 1)
+            renderQuizLayout(currentVocabList[currentIndex], 'word');
+        } 
+        else if (currentGamePhase === 26) {
+            // ĐÃ SỬA THEO ĐỀ XUẤT 3: Vòng nói câu ngữ pháp sai -> Chuyển sang trắc nghiệm đục lỗ điền từ (Phase 2.5)
+            renderGrammarClozeLayout(unitData.grammar[currentIndex]);
+        }
     }, 1000);
 }
 
