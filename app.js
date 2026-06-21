@@ -1,7 +1,7 @@
 let ALL_DATA = null;
 let currentUnitId = "";
 let currentVocabList = [];
-let currentGamePhase = 1; // 1: Trắc nghiệm Vocab, 15: Sắp xếp chữ (1.5), 2: Nói Vocab, 25: Điền khuyết câu (2.5), 3: Hội thoại (Vòng 3)
+let currentGamePhase = 1; // 1: Trắc nghiệm Vocab, 15: Sắp xếp chữ (1.5), 2: Nói Vocab, 25: Điền khuyết câu (2.5), 26: Luyện câu, 3: Hội thoại (Vòng 3)
 let currentIndex = 0;
 let totalTasks = 0;
 let completedTasks = 0;
@@ -82,7 +82,7 @@ function updateProgressBar() {
     if (bar) bar.style.width = percentage + '%';
 }
 
-// MẠCH ĐIỀU PHỐI VẬN HÀNH TUÂN THỦ CHẶT CHẼ 5 VÒNG CHƠI (1 -> 1.5 -> 2 -> 2.5 -> 3)
+// MẠCH ĐIỀU PHỐI VẬN HÀNH TUÂN THỦ CHẶT CHẼ 5 VÒNG CHƠI (1 -> 1.5 -> 2 -> 2.5 -> 26 -> 3)
 function loadTask() {
     isFallbackActive = false;
     attemptCounter = 0;
@@ -105,6 +105,7 @@ function loadTask() {
     if (currentGamePhase === 1) {
         if (currentIndex >= currentVocabList.length) {
             currentGamePhase = 15; currentIndex = 0; // Chuyển sang Vòng 1.5
+            loadTask(); return; // Đệ quy để nạp lại với phase mới, tránh tuột logic xuống dưới
         } else {
             renderQuizLayout(currentVocabList[currentIndex], 'word');
             return;
@@ -115,6 +116,7 @@ function loadTask() {
     if (currentGamePhase === 15) {
         if (currentIndex >= currentVocabList.length) {
             currentGamePhase = 2; currentIndex = 0; // Chuyển sang Vòng 2
+            loadTask(); return;
         } else {
             renderSpellingLayout(currentVocabList[currentIndex]);
             return;
@@ -125,6 +127,7 @@ function loadTask() {
     if (currentGamePhase === 2) {
         if (currentIndex >= currentVocabList.length) {
             currentGamePhase = 25; currentIndex = 0; // Chuyển sang Vòng 2.5
+            loadTask(); return;
         } else {
             renderSpeakLayout(currentVocabList[currentIndex], 'word');
             return;
@@ -135,16 +138,18 @@ function loadTask() {
     if (currentGamePhase === 25) {
         if (currentIndex >= unitData.grammar.length) {
             currentGamePhase = 26; currentIndex = 0; // Luồng phụ: Tập đọc câu Ngữ Pháp đầy đủ trước khi đóng vai
+            loadTask(); return;
         } else {
             renderGrammarClozeLayout(unitData.grammar[currentIndex]);
             return;
         }
     }
 
-    // LUỒNG PHỤ: Cho bé tập phát âm mẫu câu Ngữ Pháp (Hỗ trợ chuẩn bị bước vào Vòng 3 Hội thoại)
+    // LUỒNG PHỤ 26: Cho bé tập phát âm mẫu câu Ngữ Pháp (Hỗ trợ chuẩn bị bước vào Vòng 3 Hội thoại)
     if (currentGamePhase === 26) {
         if (currentIndex >= unitData.grammar.length) {
             currentGamePhase = 3; currentIndex = 0; // Chính thức bước vào Vòng 3 Hội thoại
+            loadTask(); return;
         } else {
             renderSpeakLayout(unitData.grammar[currentIndex], 'grammar');
             return;
@@ -167,8 +172,10 @@ function loadTask() {
 
 function renderQuizLayout(item, type) {
     changeScreen('screen-quiz');
-    document.getElementById('quiz-heading').innerText = "Vòng 1: Thử Tài Tinh Mắt 👀";
-    document.getElementById('quiz-instruction').innerText = "Bé nhìn hình minh họa và bấm chọn từ tiếng Anh đúng nhất nhé!";
+    if (currentGamePhase === 1) {
+        document.getElementById('quiz-heading').innerText = "Vòng 1: Thử Tài Tinh Mắt 👀";
+        document.getElementById('quiz-instruction').innerText = "Bé nhìn hình minh họa và bấm chọn từ tiếng Anh đúng nhất nhé!";
+    }
     if(document.getElementById('quiz-text-display')) document.getElementById('quiz-text-display').style.display = 'none';
     
     const quizImg = document.getElementById('quiz-img');
@@ -195,7 +202,6 @@ function renderQuizLayout(item, type) {
     speakCurrentTarget();
 }
 
-// KHỞI CHẠY CHUẨN LOGIC VÒNG 1.5: SẮP XẾP CHỮ CÁI TỪ VỰNG KHÔNG LỖI HIỂN THỊ
 function renderSpellingLayout(item) {
     changeScreen('screen-spelling');
     spellingTargetWord = item.word.toLowerCase();
@@ -287,7 +293,6 @@ function renderSpeakLayout(item, type) {
     speakCurrentTarget();
 }
 
-// KHỞI CHẠY CHUẨN LOGIC VÒNG 2.5: ĐỤC LỖ CÂU NGỮ PHÁP BIẾN THIÊN NGẪU NHIÊN
 function renderGrammarClozeLayout(item) {
     changeScreen('screen-quiz');
     document.getElementById('quiz-heading').innerText = "Vòng 2.5: Điền Từ Vào Chỗ Trống 🧠";
@@ -297,15 +302,13 @@ function renderGrammarClozeLayout(item) {
     let words = item.sentence.split(" ");
     let validIndices = [];
     words.forEach((w, index) => { 
-        // Lọc từ sạch không chứa dấu câu để đo độ dài
         let cleanW = w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
         if(cleanW.length > 2) validIndices.push(index); 
     });
     
-    // NÚT KHÓA GUARD AN TOÀN THEO ĐỀ XUẤT CỦA ANH
     let targetIndex;
     if (validIndices.length === 0) {
-        targetIndex = words.length - 1; // Fallback: Ép đục lỗ từ cuối cùng trong câu
+        targetIndex = words.length - 1; 
     } else {
         targetIndex = validIndices[Math.floor(Math.random() * validIndices.length)];
     }
@@ -319,7 +322,7 @@ function renderGrammarClozeLayout(item) {
         textDisplay.style.display = 'block';
     }
     
-    document.getElementById('game-hint').innerText = "Dịch nghĩa câu câu: " + item.meaning;
+    document.getElementById('game-hint').innerText = "Dịch nghĩa câu: " + item.meaning;
 
     let options = [correctWord, ...item.distractors].sort(() => Math.random() - 0.5);
     let container = document.getElementById('quiz-options-container');
@@ -336,7 +339,6 @@ function renderGrammarClozeLayout(item) {
     }
 }
 
-// VÒNG 3: ĐÓNG VAI HOẠT HỌA 2 BÊN VÀ TỰ ĐỘNG PHÁT THOẠI ĐÔI LIÊN TIẾP THÔNG MINH
 function renderDialogLayout(item) {
     changeScreen('screen-speak');
     document.getElementById('speak-vocab-area').style.display = 'none';
@@ -350,8 +352,6 @@ function renderDialogLayout(item) {
     if(document.getElementById('avatar-beth')) document.getElementById('avatar-beth').classList.add('speaking');
     
     const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
-    
-    // Đồng bộ gọi chuẩn file audio_machine từ tệp dữ liệu JSON
     let audioBeth = new Audio(`${baseUrl}/${item.audio_machine}`);
     
     audioBeth.play().then(() => {
@@ -359,7 +359,6 @@ function renderDialogLayout(item) {
             if(document.getElementById('avatar-beth')) document.getElementById('avatar-beth').classList.remove('speaking');
             if(document.getElementById('avatar-van')) document.getElementById('avatar-van').classList.add('speaking');
             
-            // Tự động nối tiếp phát file audio_user (lời mẫu của Vân) giúp con nghe lấy ngữ điệu chuẩn
             let audioVanSample = new Audio(`${baseUrl}/${item.audio_user}`);
             audioVanSample.play().then(() => {
                 audioVanSample.onended = () => {
@@ -498,12 +497,10 @@ function processSpeechFail() {
     }
 }
 
-// BẢN VÁ KHÓA LỖI CRASH PHASE 4 (VÒNG 3) KHI MICRO BỊ TIMEOUT
 function activateFallbackQuiz() {
     if (isFallbackActive) return;
     let unitData = ALL_DATA[currentUnitId];
     
-    // Nếu lỗi ở vòng hội thoại (Phase 3), hiện nút bỏ qua, không mở Quiz
     if (currentGamePhase === 3) {
         playLocalAudio("assets/audio/khen_sai.mp3");
         const skipBtn = document.getElementById('global-skip-btn');
@@ -516,11 +513,11 @@ function activateFallbackQuiz() {
     
     setTimeout(() => {
         if (currentGamePhase === 2) {
-            // Vòng nói từ vựng sai -> Về trắc nghiệm từ vựng (Phase 1)
+            currentGamePhase = 1; // Ép trạng thái về Vòng 1 để tránh lỗi biến trạng thái sau khi làm xong Quiz
             renderQuizLayout(currentVocabList[currentIndex], 'word');
         } 
         else if (currentGamePhase === 26) {
-            // ĐÃ SỬA THEO ĐỀ XUẤT 3: Vòng nói câu ngữ pháp sai -> Chuyển sang trắc nghiệm đục lỗ điền từ (Phase 2.5)
+            currentGamePhase = 25; // Ép trạng thái về Vòng 2.5 điền khuyết
             renderGrammarClozeLayout(unitData.grammar[currentIndex]);
         }
     }, 1000);
@@ -542,6 +539,12 @@ function speakCurrentTarget() {
 }
 
 function skipTask() {
+    // Khi bấm bỏ qua (Skip), chúng ta cần kiểm tra xem có đang ở trong trạng thái Fallback (Quiz cứu trợ) hay không
+    // Nếu có, phải đưa currentGamePhase quay lại đúng Phase gốc (Phát âm) để khi bấm Skip xong, bài tiếp theo vẫn ở Phase phát âm
+    if (isFallbackActive) {
+        if (currentGamePhase === 1) currentGamePhase = 2;
+        else if (currentGamePhase === 25) currentGamePhase = 26;
+    }
     completedTasks++; currentIndex++; updateProgressBar(); loadTask();
 }
 
